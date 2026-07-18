@@ -133,6 +133,28 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(10, 10, 10);
 scene.add(dirLight);
 
+// Auto-fit camera to object
+function fitCameraToObject(camera, object, offset = 1.25) {
+    const boundingBox = new THREE.Box3();
+    boundingBox.setFromObject(object);
+    const center = boundingBox.getCenter(new THREE.Vector3());
+    const size = boundingBox.getSize(new THREE.Vector3());
+    
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const fov = camera.fov * (Math.PI / 180);
+    let cameraZ = Math.abs(maxDim / 2 * Math.tan(fov * 2));
+    
+    cameraZ *= offset;
+    
+    camera.position.z = center.z + cameraZ;
+    
+    const minZ = boundingBox.min.z;
+    const cameraToFarEdge = (minZ < 0) ? -minZ + cameraZ : cameraZ - minZ;
+    camera.far = cameraToFarEdge * 3;
+    camera.updateProjectionMatrix();
+    camera.lookAt(center);
+}
+
 // Load default STL model
 let targetObject = new THREE.Group(); // Placeholder until loaded
 scene.add(targetObject);
@@ -144,11 +166,12 @@ loader.load('./webAppSphere.stl', function (geometry) {
     
     const material = new THREE.MeshStandardMaterial({ color: 0xcd7f32, roughness: 0.5, metalness: 0.8 });
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.scale.set(0.05, 0.05, 0.05); // Adjust scale based on common STL sizes
     
     scene.remove(targetObject);
     targetObject = mesh;
     scene.add(targetObject);
+    
+    fitCameraToObject(camera, targetObject);
 }, undefined, function (error) {
     console.error("Failed to load webAppSphere.stl, using placeholder", error);
     scene.remove(targetObject);
@@ -157,6 +180,7 @@ loader.load('./webAppSphere.stl', function (geometry) {
         new THREE.MeshStandardMaterial({ color: 0xcd7f32, wireframe: true })
     );
     scene.add(targetObject);
+    fitCameraToObject(camera, targetObject);
 });
 
 const stlUpload = document.getElementById('stl-upload');
@@ -178,10 +202,8 @@ stlUpload.addEventListener('change', (e) => {
         const material = new THREE.MeshStandardMaterial({ color: 0xcd7f32, roughness: 0.5, metalness: 0.8 });
         targetObject = new THREE.Mesh(geometry, material);
         
-        // Scale to fit
-        targetObject.scale.set(0.05, 0.05, 0.05); // Adjust scale based on common STL sizes
-        
         scene.add(targetObject);
+        fitCameraToObject(camera, targetObject);
     };
     reader.readAsArrayBuffer(file);
 });
