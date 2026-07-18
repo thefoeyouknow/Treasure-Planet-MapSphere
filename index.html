@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapSphere Control Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Load Three.js and STLLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/STLLoader.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MapSphere Control</h1>
+            <button id="connectBtn" class="primary-btn">Connect BLE</button>
+            <div id="status">Disconnected</div>
+        </header>
+
+        <main>
+            <section class="telemetry">
+                <h2>Orientation</h2>
+                <div id="3d-container"></div>
+                <div class="file-upload">
+                    <label for="stl-upload">Load custom STL model:</label>
+                    <input type="file" id="stl-upload" accept=".stl">
+                </div>
+            </section>
+
+            <section class="controls">
+                <h2>Settings</h2>
+                
+                <div class="control-group">
+                    <label for="brightness">Global Brightness: <span id="brightness-val">255</span></label>
+                    <input type="range" id="brightness" min="0" max="255" value="255">
+                </div>
+
+                <div class="control-group">
+                    <label for="sensitivity">Proximity Sensitivity: <span id="sensitivity-val">50</span></label>
+                    <input type="range" id="sensitivity" min="0" max="100" value="50">
+                </div>
+
+                <div class="control-group">
+                    <label for="timeout">Sleep Timeout (s): <span id="timeout-val">35</span></label>
+                    <input type="range" id="timeout" min="10" max="300" value="35">
+                </div>
+            </section>
+
+            <section class="actions">
+                <h2>Triggers</h2>
+                <button id="btn-blackout" data-cmd="1">Toggle Blackout</button>
+                <button id="btn-polar" data-cmd="2">Polar Cascade</button>
+                <button id="btn-eq-x" data-cmd="3">Equatorial Ripple (X)</button>
+                <button id="btn-eq-z" data-cmd="4">Equatorial Ripple (Z)</button>
+            </section>
+        </main>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
