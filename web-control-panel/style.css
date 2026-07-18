@@ -94,7 +94,7 @@ section {
     align-items: center;
 }
 
-#3d-container {
+#viewer-container {
     width: 100%;
     height: 300px;
     margin-top: 1rem;

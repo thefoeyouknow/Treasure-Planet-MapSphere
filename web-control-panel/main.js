@@ -118,7 +118,7 @@ document.querySelectorAll('.actions button').forEach(btn => {
 });
 
 // --- Three.js 3D Setup ---
-const container = document.getElementById('3d-container');
+const container = document.getElementById('viewer-container');
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
 camera.position.z = 5;
