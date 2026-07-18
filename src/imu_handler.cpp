@@ -106,8 +106,8 @@ void processIMUPhysicalInputs() {
     sensors_event_t accel, gyro, temp;
     lsm6ds.getEvent(&accel, &gyro, &temp);
 
-    float x = accel.acceleration.x / 9.80665;
-    float y = accel.acceleration.y / 9.80665;
+    float y = accel.acceleration.x / 9.80665;
+    float x = accel.acceleration.y / 9.80665;
     float z = accel.acceleration.z / 9.80665;
 
     currentG_X = x;
