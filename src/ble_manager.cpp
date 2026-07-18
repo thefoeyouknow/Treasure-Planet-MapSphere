@@ -97,18 +97,31 @@ void processBLE() {
 
   BLE.poll();
 
-  // Time-slice scanning and advertising because ArduinoBLE doesn't natively do
-  // both concurrently 500ms advertise, 1500ms scan
-  if (isScanning && (millis() - lastRoleSwitch >= 1500)) {
-    BLE.stopScan();
-    BLE.advertise();
-    isScanning = false;
-    lastRoleSwitch = millis();
-  } else if (!isScanning && (millis() - lastRoleSwitch >= 500)) {
-    BLE.stopAdvertise();
-    BLE.scanForUuid(customServiceUuidStr);
-    isScanning = true;
-    lastRoleSwitch = millis();
+  BLEDevice central = BLE.central();
+  bool centralConnected = central && central.connected();
+
+  // Suspend role switching if a central (like a phone) is connected
+  if (centralConnected) {
+    if (isScanning) {
+      BLE.stopScan();
+      isScanning = false;
+    }
+    // We can also reset the inactivity timer to keep the device awake while connected
+    resetInactivityTimer();
+  } else {
+    // Time-slice scanning and advertising because ArduinoBLE doesn't natively do
+    // both concurrently 500ms advertise, 1500ms scan
+    if (isScanning && (millis() - lastRoleSwitch >= 1500)) {
+      BLE.stopScan();
+      BLE.advertise();
+      isScanning = false;
+      lastRoleSwitch = millis();
+    } else if (!isScanning && (millis() - lastRoleSwitch >= 500)) {
+      BLE.stopAdvertise();
+      BLE.scanForUuid(customServiceUuidStr);
+      isScanning = true;
+      lastRoleSwitch = millis();
+    }
   }
 
   if (isScanning) {
@@ -139,7 +152,7 @@ void processBLE() {
   }
 
   static uint32_t lastTelemetryTime = 0;
-  if (millis() - lastTelemetryTime > 66) { // ~15 Hz
+  if (centralConnected && (millis() - lastTelemetryTime > 66)) { // ~15 Hz
     lastTelemetryTime = millis();
     float gVec[3];
     getAveragedGravityVector(&gVec[0], &gVec[1], &gVec[2]);
