@@ -161,3 +161,21 @@ input[type=color]::-webkit-color-swatch {
     border: none;
     border-radius: 3px;
 }
+
+.about {
+    grid-column: 1 / -1;
+    text-align: center;
+}
+
+.about-content {
+    margin-top: 1rem;
+}
+
+.about p {
+    margin: 0.5rem 0;
+}
+
+.about-notes {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
