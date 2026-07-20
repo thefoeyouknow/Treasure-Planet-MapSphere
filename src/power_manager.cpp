@@ -62,6 +62,12 @@ void goToSleep() {
     // Set pin to wake up the system
     nrf_gpio_cfg_sense_input((uint32_t)digitalPinToPinName(PIN_LSM6DS3TR_C_INT1), NRF_GPIO_PIN_PULLDOWN, NRF_GPIO_PIN_SENSE_HIGH);
 
+    // Ensure the pin is physically LOW before committing to SYSTEMOFF.
+    // If we call SYSTEMOFF while the pin is HIGH, the nRF will wake up instantly.
+    while (digitalRead(PIN_LSM6DS3TR_C_INT1) == HIGH) {
+        delay(1);
+    }
+
     // Call system off
     NRF_POWER->SYSTEMOFF = 1;
 

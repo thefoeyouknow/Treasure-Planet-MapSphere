@@ -110,6 +110,9 @@ void processIMUPhysicalInputs() {
     float x = accel.acceleration.y / 9.80665;
     float z = accel.acceleration.z / 9.80665;
 
+    float gyroMag = sqrt((gyro.gyro.x * gyro.gyro.x) + (gyro.gyro.y * gyro.gyro.y) + (gyro.gyro.z * gyro.gyro.z));
+    applyGyroHueShift(gyroMag);
+
     currentG_X = x;
     currentG_Y = y;
     currentG_Z = z;
@@ -174,7 +177,7 @@ void processIMUPhysicalInputs() {
 
             if (absY > absX && absY > absZ) {
                 Serial.println("[LED] State: Polar Cascade (Y-axis Tap)");
-                triggerPolarCascade(10, 28, 29); 
+                triggerPolarCascade(10, 27, 28); 
             } else if (absX > absY && absX > absZ) {
                 Serial.println("[LED] State: Equatorial Ripple (X-axis Tap)");
                 triggerEquatorialRipple(5, 15); 
@@ -214,19 +217,22 @@ void configureIMUForSleep() {
     // 3. Set Wake-up threshold (0 to 63)
     writeRegisterRaw(0x5B, 0x08); // WAKE_UP_THS (~250mg)
 
-    // 4. Set Wake-up duration
-    writeRegisterRaw(0x5C, 0x00); // WAKE_UP_DUR (0 duration = instant trigger)
+    // 4. Set Wake-up duration (debounce)
+    // Bits [6:5] = WAKE_DUR. Setting to 1 (0x20) means the motion must last for 1*ODR (~38ms)
+    // This ignores instantaneous shocks/bounces from setting the sphere down!
+    writeRegisterRaw(0x5C, 0x20); 
 
     // 5. Route Wake-up event to INT1 (overwrite to ensure ONLY wake-up is routed)
     writeRegisterRaw(0x5E, 0x20); // MD1_CFG -> INT1_WU = 1
 
     // 6. CLEAR any pending interrupts so the INT1 pin drops low before we sleep!
     Wire1.beginTransmission(0x6A);
-    Wire1.write(0x1B); // WAKE_UP_SRC
+    Wire1.write(0x1A); // ALL_INT_SRC
     Wire1.endTransmission(false);
-    Wire1.requestFrom((uint8_t)0x6A, (uint8_t)1);
-    if (Wire1.available()) {
-        Wire1.read();
+    Wire1.requestFrom((uint8_t)0x6A, (uint8_t)2);
+    if (Wire1.available() == 2) {
+        Wire1.read(); // ALL_INT_SRC
+        Wire1.read(); // WAKE_UP_SRC
     }
     
     // Give the IMU INT1 pin time to physically drop low

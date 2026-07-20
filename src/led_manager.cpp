@@ -1,8 +1,8 @@
 #include "led_manager.h"
 #include <Adafruit_NeoPixel.h>
 
-#define NUM_LEDS 38
-#define LED_PIN 10
+#define NUM_LEDS 36
+#define LED_PIN D10
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -15,6 +15,23 @@ const uint32_t FRAME_DELAY_MS = 16; // ~60 FPS
 
 bool blackoutMode = false;
 uint8_t globalBrightness = 255;
+
+const uint8_t distToNorth[NUM_LEDS] = {
+    // Loop A (0..19). North is 10.
+    10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    // Loop B (20..35). North is 27 and 28.
+    7, 6, 5, 4, 3, 2, 1, 0, // 20..27
+    0, 1, 2, 3, 4, 5, 6, 7  // 28..35
+};
+
+AnimationMode currentMode = AnimationMode::AUTONOMOUS;
+RGB manualColor = {0, 0, 255};
+float gyroHueOffset = 0.0f;
+uint8_t currentProxSpeed = 30;
+uint8_t gyroSensitivityConfig = 50; // 0-100
+
+float polarWaveRadius = -1.0f;
+float equatorialWaveRadius = -1.0f;
 
 // --- Math Helpers (FastLED replacements) ---
 uint8_t beatsin8(uint8_t beats_per_minute, uint8_t lowest = 0, uint8_t highest = 255) {
@@ -60,14 +77,66 @@ void initLEDs() {
     strip.show();
 }
 
+void setGyroSensitivity(uint8_t sens) {
+    gyroSensitivityConfig = sens;
+}
+
+void applyGyroHueShift(float rotationSpeed) {
+    // scale 0-100 to a multiplier (e.g., 50 -> 2.0x, 100 -> 4.0x)
+    float multiplier = (float)gyroSensitivityConfig / 25.0f;
+    gyroHueOffset += rotationSpeed * multiplier;
+    if (gyroHueOffset > 255.0f) gyroHueOffset -= 255.0f;
+}
+
+void setAnimationMode(AnimationMode mode) {
+    currentMode = mode;
+}
+
+void setManualColor(uint8_t r, uint8_t g, uint8_t b) {
+    manualColor = {r, g, b};
+}
+
 void updateLEDs() {
     if (blackoutMode || millis() - lastFrameTime < FRAME_DELAY_MS) {
         return;
     }
     lastFrameTime = millis();
 
+    // Process background based on mode
+    if (currentMode == AnimationMode::AUTONOMOUS) {
+        runAutonomousAnimation();
+    } else if (currentMode == AnimationMode::SOLID_COLOR) {
+        fill_solid(background, NUM_LEDS, manualColor);
+    } else if (currentMode == AnimationMode::PROXIMITY_SYNC) {
+        runSyncProximityAnimation();
+    }
+
     // Fade the overlay layer (taps)
-    fadeToBlackBy(overlay, NUM_LEDS, 10);
+    fadeToBlackBy(overlay, NUM_LEDS, 20); // Fade faster so trails look cleaner
+
+    // Update wave radiuses
+    if (polarWaveRadius >= 0.0f) {
+        polarWaveRadius += 0.4f; // speed
+        for (int i = 0; i < NUM_LEDS; i++) {
+            float dist = abs((float)distToNorth[i] - polarWaveRadius);
+            if (dist < 1.5f) {
+                overlay[i] = {255, 200, 50}; // Dramatic Gold
+            }
+        }
+        if (polarWaveRadius > 12.0f) polarWaveRadius = -1.0f;
+    }
+
+    if (equatorialWaveRadius >= 0.0f) {
+        equatorialWaveRadius += 0.4f; // speed
+        for (int i = 0; i < NUM_LEDS; i++) {
+            float distFromEq = abs((float)distToNorth[i] - 5.0f);
+            float dist = abs(distFromEq - equatorialWaveRadius);
+            if (dist < 1.5f) {
+                overlay[i] = {0, 255, 255}; // Cyan
+            }
+        }
+        if (equatorialWaveRadius > 7.0f) equatorialWaveRadius = -1.0f;
+    }
 
     // Composite: Overlay adds to background
     for (int i = 0; i < NUM_LEDS; i++) {
@@ -106,26 +175,45 @@ void setGlobalBrightness(uint8_t brightness) {
 
 void triggerPolarCascade(int top1, int top2, int top3) {
     if (blackoutMode) return;
-    if (top1 < NUM_LEDS) overlay[top1] = {255, 255, 255};
-    if (top2 < NUM_LEDS) overlay[top2] = {255, 255, 255};
-    if (top3 < NUM_LEDS) overlay[top3] = {255, 255, 255};
+    polarWaveRadius = 0.0f; // Spawns the wave at the north pole
 }
 
 void triggerEquatorialRipple(int eq1, int eq2) {
     if (blackoutMode) return;
-    if (eq1 < NUM_LEDS) overlay[eq1] = {0, 0, 255};
-    if (eq2 < NUM_LEDS) overlay[eq2] = {0, 0, 255};
+    equatorialWaveRadius = 0.0f; // Spawns the wave at the equator
 }
 
-void runSyncProximityAnimation(uint8_t speed) {
+void setProximitySpeed(uint8_t speed) {
+    currentProxSpeed = speed;
+}
+
+void runSyncProximityAnimation() {
     if (blackoutMode) return;
-    uint8_t pos = beatsin8(speed, 0, NUM_LEDS - 1);
+    uint8_t pos = beatsin8(currentProxSpeed, 0, NUM_LEDS - 1);
     fill_solid(background, NUM_LEDS, {0, 0, 0});
     background[pos] = {0, 255, 0};
 }
 
 void runAutonomousAnimation() {
     if (blackoutMode) return;
-    uint8_t bright = beatsin8(15, 20, 80);
-    fill_solid(background, NUM_LEDS, CHSV(160, 255, bright));
+    // Ethereal space background: Slowly shifting base color
+    // We add gyroHueOffset to make it spin colors when rolling!
+    uint8_t baseHue = beatsin8(2, 140, 180); // Slowly drifts between purple and blue
+    baseHue = (uint8_t)(baseHue + (int)gyroHueOffset);
+    
+    // Add a pulsing brightness to make it breathe
+    uint8_t bright = beatsin8(15, 30, 120); 
+    fill_solid(background, NUM_LEDS, CHSV(baseHue, 255, bright));
+}
+
+void runBootChase() {
+    uint32_t delayTime = 2000 / NUM_LEDS; // Total time 2000ms distributed evenly
+    strip.clear();
+    for (int i = 0; i < NUM_LEDS; i++) {
+        strip.setPixelColor(i, 0, 0, 255); // Blue chase using RGB values directly
+        strip.show();
+        delay(delayTime);
+        strip.setPixelColor(i, 0, 0, 0); // Turn off trailing pixel
+    }
+    strip.show();
 }

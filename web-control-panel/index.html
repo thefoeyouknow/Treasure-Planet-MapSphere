@@ -31,8 +31,27 @@
                 <h2>Settings</h2>
                 
                 <div class="control-group">
+                    <label for="mode-select">Animation Mode:</label>
+                    <select id="mode-select">
+                        <option value="0">Autonomous (Default)</option>
+                        <option value="1">Solid Color</option>
+                        <option value="2">Proximity Sync</option>
+                    </select>
+                </div>
+
+                <div class="control-group color-picker-group">
+                    <label for="color-picker">Manual Color:</label>
+                    <input type="color" id="color-picker" value="#0000ff">
+                </div>
+
+                <div class="control-group">
                     <label for="brightness">Global Brightness: <span id="brightness-val">255</span></label>
                     <input type="range" id="brightness" min="0" max="255" value="255">
+                </div>
+
+                <div class="control-group">
+                    <label for="gyro-sens">Gyro Color-Shift Sensitivity: <span id="gyro-sens-val">50</span></label>
+                    <input type="range" id="gyro-sens" min="0" max="100" value="50">
                 </div>
 
                 <div class="control-group">

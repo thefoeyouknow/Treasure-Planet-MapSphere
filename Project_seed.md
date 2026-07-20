@@ -67,7 +67,7 @@ void initCoreIMU() {
 
 3. LED Array Mapping & Data Flow
 
-The physical strip is composed of 38 WS2812B NeoPixels running at 144 LEDs/meter, wired as a single continuous sequential data line via jumpers over the mechanical crossover points.
+The physical strip is composed of 36 WS2812B NeoPixels running at 144 LEDs/meter, wired as a single continuous sequential data line via jumpers over the mechanical crossover points.
 
 With the equatorial center support ring level to the ground, the LED array is shaped like an X. It consists of two diagonal meridian hoops that intersect at the North Pole (Apex) and South Pole (Base).
 
@@ -75,11 +75,11 @@ With the equatorial center support ring level to the ground, the LED array is sh
                                       |
                  (Solder Bridge Jumper at South Pole)
                                       V
-                        [ Loop B: Left Diagonal Arc (20..28) ]
+                        [ Loop B: Left Diagonal Arc (20..27) ]
                                       |
                  (Solder Bridge Jumper at North Pole)
                                       V
-                        [ Loop B: Right Diagonal Arc (29..37) ]
+                        [ Loop B: Right Diagonal Arc (28..35) ]
 
 
 
@@ -97,31 +97,31 @@ Index 15: Equatorial Crossing (West Hemisphere).
 
 Index 19: South Pole (Base / End of Loop A).
 
-Loop B: Conjugate Diagonal Meridian Hoop (Indices 20 to 37)
+Loop B: Conjugate Diagonal Meridian Hoop (Indices 20 to 35)
 
 Due to the mechanical interlocking of the core, the second leg of the "X" is split into two equal half-circles:
 
-Left Diagonal Arc (Indices 20 to 28):
+Left Diagonal Arc (Indices 20 to 27):
 
 Index 20: South Pole (Base / Start of Arc 1).
 
-Index 24: Equatorial Crossing (South-West Hemisphere).
+Index 23/24: Equatorial Crossing (South-West Hemisphere).
+
+Index 27: North Pole (Apex / Physical crossover).
+
+Right Diagonal Arc (Indices 28 to 35):
 
 Index 28: North Pole (Apex / Physical crossover).
 
-Right Diagonal Arc (Indices 29 to 37):
+Index 31/32: Equatorial Crossing (North-East Hemisphere).
 
-Index 29: North Pole (Apex / Physical crossover).
-
-Index 33: Equatorial Crossing (North-East Hemisphere).
-
-Index 37: South Pole (Base / End of Loop B).
+Index 35: South Pole (Base / End of Loop B).
 
 3.2 Physical Intersection Points
 
-North Pole Intersection (Apex): Index 10 of Loop A is physically adjacent to Indices 28 and 29 of Loop B.
+North Pole Intersection (Apex): Index 10 of Loop A is physically adjacent to Indices 27 and 28 of Loop B.
 
-South Pole Intersection (Base): Indices 0 and 19 of Loop A are physically adjacent to Indices 20 and 37 of Loop B.
+South Pole Intersection (Base): Indices 0 and 19 of Loop A are physically adjacent to Indices 20 and 35 of Loop B.
 
 4. Firmware State Machine & Power Management
 
@@ -208,7 +208,7 @@ void processIMUPhysicalInputs() {
 
         if (absY > absX && absY > absZ) {
             // Polar Tap: Trigger symmetric 4-way pulse from the Apex downward
-            triggerPolarCascade(10, 28, 29); 
+            triggerPolarCascade(10, 27, 28); 
         } else if (absX > absY && absX > absZ) {
             // Equatorial Tap (X-Axis dominant): Target Loop A's equator crossings
             triggerEquatorialRipple(5, 15); 

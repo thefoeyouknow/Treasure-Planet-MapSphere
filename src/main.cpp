@@ -19,6 +19,7 @@ void setup() {
 
   Serial.println("Init LEDs...");
   initLEDs();
+  runBootChase();
 
   Serial.println("Init IMU...");
   initIMU();
