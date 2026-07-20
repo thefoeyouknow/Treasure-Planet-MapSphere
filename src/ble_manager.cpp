@@ -35,13 +35,16 @@ void commandCharWritten(BLEDevice central, BLECharacteristic characteristic) {
       setBlackoutMode(!blackoutMode);
       break;
     case 0x02:
-      triggerPolarCascade(10, 27, 28);
+      // Old Polar Cascade -> Tap from North (+Y)
+      triggerImpactRipple(0, 10.0f, 0);
       break;
     case 0x03:
-      triggerEquatorialRipple(5, 15);
+      // Old Eq X -> Tap from +X
+      triggerImpactRipple(10.0f, 0, 0);
       break;
     case 0x04:
-      triggerEquatorialRipple(24, 33);
+      // Old Eq Z -> Tap from +Z
+      triggerImpactRipple(0, 0, 10.0f);
       break;
   }
 }
@@ -110,7 +113,7 @@ void initBLE() {
   imuTelemetryChar.writeValue(initialTelemetry, 12);
   
   // Initialize Version Char
-  fwVersionChar.writeValue(FW_VERSION);
+  fwVersionChar.writeValue(BUILD_VERSION);
   
   animationModeChar.writeValue((uint8_t)0); // Autonomous mode default
   uint8_t initialColor[3] = {0, 0, 255};
