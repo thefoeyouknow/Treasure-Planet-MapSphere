@@ -1,6 +1,7 @@
 #include "ble_manager.h"
 #include "led_manager.h"
 #include "power_manager.h"
+#include "version.h"
 #include <ArduinoBLE.h>
 #include "imu_handler.h"
 
@@ -13,6 +14,7 @@ BLECharacteristic imuTelemetryChar("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c71", BLENo
 
 BLEByteCharacteristic animationModeChar("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c72", BLERead | BLEWrite);
 BLECharacteristic colorOverrideChar("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c73", BLERead | BLEWrite, 3);
+BLECharacteristic fwVersionChar("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c74", BLERead, 16);
 
 float filteredRSSI = -80.0;
 const float ALPHA = 0.15;
@@ -91,6 +93,7 @@ void initBLE() {
   customService.addCharacteristic(imuTelemetryChar);
   customService.addCharacteristic(animationModeChar);
   customService.addCharacteristic(colorOverrideChar);
+  customService.addCharacteristic(fwVersionChar);
   
   BLE.addService(customService);
   
@@ -105,6 +108,9 @@ void initBLE() {
   
   uint8_t initialTelemetry[12] = {0};
   imuTelemetryChar.writeValue(initialTelemetry, 12);
+  
+  // Initialize Version Char
+  fwVersionChar.writeValue(FW_VERSION);
   
   animationModeChar.writeValue((uint8_t)0); // Autonomous mode default
   uint8_t initialColor[3] = {0, 0, 255};

@@ -10,6 +10,7 @@ let cfgCharacteristic;
 let imuCharacteristic;
 let modeCharacteristic;
 let colorCharacteristic;
+let fwCharacteristic;
 
 const connectBtn = document.getElementById('connectBtn');
 const statusDiv = document.getElementById('status');
@@ -57,6 +58,17 @@ connectBtn.addEventListener('click', async () => {
         imuCharacteristic = await service.getCharacteristic(IMU_CHAR_UUID);
         modeCharacteristic = await service.getCharacteristic("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c72");
         colorCharacteristic = await service.getCharacteristic("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c73");
+        fwCharacteristic = await service.getCharacteristic("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c74");
+
+        // Read FW version
+        try {
+            const fwValue = await fwCharacteristic.readValue();
+            const decoder = new TextDecoder('utf-8');
+            const fwVersion = decoder.decode(fwValue);
+            document.getElementById('fw-version').textContent = fwVersion;
+        } catch(e) {
+            console.log("Could not read FW version");
+        }
 
         // Read initial config
         const cfgValue = await cfgCharacteristic.readValue();

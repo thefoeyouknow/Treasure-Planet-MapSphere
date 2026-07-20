@@ -26,12 +26,13 @@ const uint8_t distToNorth[NUM_LEDS] = {
 
 AnimationMode currentMode = AnimationMode::AUTONOMOUS;
 RGB manualColor = {0, 0, 255};
-float gyroHueOffset = 0.0f;
+float currentBaseHue = 160.0f;
 uint8_t currentProxSpeed = 30;
 uint8_t gyroSensitivityConfig = 50; // 0-100
 
-float polarWaveRadius = -1.0f;
-float equatorialWaveRadius = -1.0f;
+float currentRippleRadius = -1.0f;
+float currentRippleOrigin[3] = {0.0f, 0.0f, 0.0f};
+float ledPos[NUM_LEDS][3];
 
 // --- Math Helpers (FastLED replacements) ---
 uint8_t beatsin8(uint8_t beats_per_minute, uint8_t lowest = 0, uint8_t highest = 255) {
@@ -75,6 +76,41 @@ void initLEDs() {
     strip.begin();
     strip.clear();
     strip.show();
+    
+    // Generate 3D LED mapping based on distToNorth
+    // Assuming radius = 10.0 for easier math
+    for (int i = 0; i < NUM_LEDS; i++) {
+        // angle from 0 (North) to PI (South)
+        float theta = distToNorth[i] * (PI / 10.0f);
+        
+        if (i < 20) {
+            // Loop A: X-Y plane
+            if (i <= 10) {
+                // Going South to North
+                ledPos[i][0] = sin(theta) * 10.0f;
+                ledPos[i][1] = cos(theta) * 10.0f;
+                ledPos[i][2] = 0.0f;
+            } else {
+                // Going North back down to South
+                ledPos[i][0] = -sin(theta) * 10.0f;
+                ledPos[i][1] = cos(theta) * 10.0f;
+                ledPos[i][2] = 0.0f;
+            }
+        } else {
+            // Loop B: Z-Y plane
+            if (i <= 27) {
+                // Going up to North
+                ledPos[i][0] = 0.0f;
+                ledPos[i][1] = cos(theta) * 10.0f;
+                ledPos[i][2] = sin(theta) * 10.0f;
+            } else {
+                // Going down from North
+                ledPos[i][0] = 0.0f;
+                ledPos[i][1] = cos(theta) * 10.0f;
+                ledPos[i][2] = -sin(theta) * 10.0f;
+            }
+        }
+    }
 }
 
 void setGyroSensitivity(uint8_t sens) {
@@ -84,8 +120,8 @@ void setGyroSensitivity(uint8_t sens) {
 void applyGyroHueShift(float rotationSpeed) {
     // scale 0-100 to a multiplier (e.g., 50 -> 2.0x, 100 -> 4.0x)
     float multiplier = (float)gyroSensitivityConfig / 25.0f;
-    gyroHueOffset += rotationSpeed * multiplier;
-    if (gyroHueOffset > 255.0f) gyroHueOffset -= 255.0f;
+    currentBaseHue += rotationSpeed * multiplier;
+    if (currentBaseHue > 255.0f) currentBaseHue -= 255.0f;
 }
 
 void setAnimationMode(AnimationMode mode) {
@@ -114,28 +150,20 @@ void updateLEDs() {
     // Fade the overlay layer (taps)
     fadeToBlackBy(overlay, NUM_LEDS, 20); // Fade faster so trails look cleaner
 
-    // Update wave radiuses
-    if (polarWaveRadius >= 0.0f) {
-        polarWaveRadius += 0.4f; // speed
+    // Update wave radius
+    if (currentRippleRadius >= 0.0f) {
+        currentRippleRadius += 0.7f; // expansion speed
         for (int i = 0; i < NUM_LEDS; i++) {
-            float dist = abs((float)distToNorth[i] - polarWaveRadius);
-            if (dist < 1.5f) {
-                overlay[i] = {255, 200, 50}; // Dramatic Gold
+            float dx = ledPos[i][0] - currentRippleOrigin[0];
+            float dy = ledPos[i][1] - currentRippleOrigin[1];
+            float dz = ledPos[i][2] - currentRippleOrigin[2];
+            float dist = sqrt(dx*dx + dy*dy + dz*dz);
+            
+            if (abs(dist - currentRippleRadius) < 2.5f) {
+                overlay[i] = {255, 200, 50}; // Bright gold impact
             }
         }
-        if (polarWaveRadius > 12.0f) polarWaveRadius = -1.0f;
-    }
-
-    if (equatorialWaveRadius >= 0.0f) {
-        equatorialWaveRadius += 0.4f; // speed
-        for (int i = 0; i < NUM_LEDS; i++) {
-            float distFromEq = abs((float)distToNorth[i] - 5.0f);
-            float dist = abs(distFromEq - equatorialWaveRadius);
-            if (dist < 1.5f) {
-                overlay[i] = {0, 255, 255}; // Cyan
-            }
-        }
-        if (equatorialWaveRadius > 7.0f) equatorialWaveRadius = -1.0f;
+        if (currentRippleRadius > 30.0f) currentRippleRadius = -1.0f;
     }
 
     // Composite: Overlay adds to background
@@ -173,14 +201,17 @@ void setGlobalBrightness(uint8_t brightness) {
     globalBrightness = brightness;
 }
 
-void triggerPolarCascade(int top1, int top2, int top3) {
+void triggerImpactRipple(float ix, float iy, float iz) {
     if (blackoutMode) return;
-    polarWaveRadius = 0.0f; // Spawns the wave at the north pole
-}
-
-void triggerEquatorialRipple(int eq1, int eq2) {
-    if (blackoutMode) return;
-    equatorialWaveRadius = 0.0f; // Spawns the wave at the equator
+    
+    float mag = sqrt(ix*ix + iy*iy + iz*iz);
+    if (mag > 0) {
+        // Project to the sphere shell (radius 10.0)
+        currentRippleOrigin[0] = (ix / mag) * 10.0f;
+        currentRippleOrigin[1] = (iy / mag) * 10.0f;
+        currentRippleOrigin[2] = (iz / mag) * 10.0f;
+        currentRippleRadius = 0.0f;
+    }
 }
 
 void setProximitySpeed(uint8_t speed) {
@@ -196,14 +227,10 @@ void runSyncProximityAnimation() {
 
 void runAutonomousAnimation() {
     if (blackoutMode) return;
-    // Ethereal space background: Slowly shifting base color
-    // We add gyroHueOffset to make it spin colors when rolling!
-    uint8_t baseHue = beatsin8(2, 140, 180); // Slowly drifts between purple and blue
-    baseHue = (uint8_t)(baseHue + (int)gyroHueOffset);
     
     // Add a pulsing brightness to make it breathe
-    uint8_t bright = beatsin8(15, 30, 120); 
-    fill_solid(background, NUM_LEDS, CHSV(baseHue, 255, bright));
+    uint8_t bright = beatsin8(15, 80, 255); 
+    fill_solid(background, NUM_LEDS, CHSV((uint8_t)currentBaseHue, 255, bright));
 }
 
 void runBootChase() {

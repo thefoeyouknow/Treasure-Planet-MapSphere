@@ -11,8 +11,7 @@ extern bool blackoutMode;
 void setBlackoutMode(bool enable);
 void setGlobalBrightness(uint8_t brightness);
 
-void triggerPolarCascade(int top1, int top2, int top3);
-void triggerEquatorialRipple(int eq1, int eq2);
+void triggerImpactRipple(float ix, float iy, float iz);
 void runSyncProximityAnimation();
 void runAutonomousAnimation();
 

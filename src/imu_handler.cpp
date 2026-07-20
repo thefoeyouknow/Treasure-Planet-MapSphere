@@ -175,23 +175,20 @@ void processIMUPhysicalInputs() {
             float absY = abs(jerkY);
             float absZ = abs(jerkZ);
 
-            if (absY > absX && absY > absZ) {
-                Serial.println("[LED] State: Polar Cascade (Y-axis Tap)");
-                triggerPolarCascade(10, 27, 28); 
-            } else if (absX > absY && absX > absZ) {
-                Serial.println("[LED] State: Equatorial Ripple (X-axis Tap)");
-                triggerEquatorialRipple(5, 15); 
-            } else if (absZ > absY && absZ > absX) {
-                if (millis() - lastZTapTime < DOUBLE_TAP_WINDOW_MS) {
-                    // Double tap detected
-                    Serial.println(blackoutMode ? "[LED] State: Blackout Disabled" : "[LED] State: Blackout Enabled");
-                    setBlackoutMode(!blackoutMode);
-                    lastZTapTime = 0; // Reset to prevent triple-tap triggering again immediately
-                } else {
+            if (absZ > absY && absZ > absX && (millis() - lastZTapTime < DOUBLE_TAP_WINDOW_MS)) {
+                // Double tap detected on Z axis (which is usually tapping the shell side)
+                Serial.println(blackoutMode ? "[LED] State: Blackout Disabled" : "[LED] State: Blackout Enabled");
+                setBlackoutMode(!blackoutMode);
+                lastZTapTime = 0; // Reset to prevent triple-tap triggering again immediately
+            } else {
+                if (absZ > absY && absZ > absX) {
                     lastZTapTime = millis();
-                    Serial.println("[LED] State: Equatorial Ripple (Z-axis Tap)");
-                    triggerEquatorialRipple(24, 33);
                 }
+                Serial.print("[LED] State: Impact Ripple from ");
+                Serial.print(jerkX); Serial.print(", ");
+                Serial.print(jerkY); Serial.print(", ");
+                Serial.println(jerkZ);
+                triggerImpactRipple(jerkX, jerkY, jerkZ);
             }
         }
     }
