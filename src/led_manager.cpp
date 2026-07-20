@@ -204,12 +204,21 @@ void setGlobalBrightness(uint8_t brightness) {
 void triggerImpactRipple(float ix, float iy, float iz) {
     if (blackoutMode) return;
     
-    float mag = sqrt(ix*ix + iy*iy + iz*iz);
-    if (mag > 0) {
+    // Orthogonal Basis Matrix derived from Gram-Schmidt calibration
+    const float calX[3] = {-0.490f, 0.662f, -0.567f}; // Loop A Equator Axis
+    const float calY[3] = {0.581f, 0.734f, 0.353f};   // North Pole Axis
+    const float calZ[3] = {0.650f, -0.157f, -0.744f}; // Loop B Equator Axis
+    
+    float mappedX = ix * calX[0] + iy * calX[1] + iz * calX[2];
+    float mappedY = ix * calY[0] + iy * calY[1] + iz * calY[2];
+    float mappedZ = ix * calZ[0] + iy * calZ[1] + iz * calZ[2];
+
+    float mag = sqrt(mappedX*mappedX + mappedY*mappedY + mappedZ*mappedZ);
+    if (mag > 0.001f) {
         // Project to the sphere shell (radius 10.0)
-        currentRippleOrigin[0] = (ix / mag) * 10.0f;
-        currentRippleOrigin[1] = (iy / mag) * 10.0f;
-        currentRippleOrigin[2] = (iz / mag) * 10.0f;
+        currentRippleOrigin[0] = (mappedX / mag) * 10.0f;
+        currentRippleOrigin[1] = (mappedY / mag) * 10.0f;
+        currentRippleOrigin[2] = (mappedZ / mag) * 10.0f;
         currentRippleRadius = 0.0f;
     }
 }

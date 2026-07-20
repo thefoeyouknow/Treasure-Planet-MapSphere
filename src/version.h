@@ -3,6 +3,6 @@
 
 // The patch version is automatically incremented by increment_version.py at
 // each build.
-#define BUILD_VERSION "v0.1.24"
+#define BUILD_VERSION "v0.1.26"
 
 #endif
