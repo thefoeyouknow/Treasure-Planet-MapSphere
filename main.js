@@ -8,9 +8,17 @@ let bleServer;
 let cmdCharacteristic;
 let cfgCharacteristic;
 let imuCharacteristic;
+let modeCharacteristic;
+let colorCharacteristic;
 
 const connectBtn = document.getElementById('connectBtn');
 const statusDiv = document.getElementById('status');
+
+// New Controls
+const modeSelect = document.getElementById('mode-select');
+const colorPicker = document.getElementById('color-picker');
+const gyroSensInput = document.getElementById('gyro-sens');
+const gyroSensVal = document.getElementById('gyro-sens-val');
 
 // Sliders
 const brightnessInput = document.getElementById('brightness');
@@ -47,12 +55,18 @@ connectBtn.addEventListener('click', async () => {
         cmdCharacteristic = await service.getCharacteristic(CMD_CHAR_UUID);
         cfgCharacteristic = await service.getCharacteristic(CFG_CHAR_UUID);
         imuCharacteristic = await service.getCharacteristic(IMU_CHAR_UUID);
+        modeCharacteristic = await service.getCharacteristic("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c72");
+        colorCharacteristic = await service.getCharacteristic("a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c73");
 
         // Read initial config
         const cfgValue = await cfgCharacteristic.readValue();
         const timeout = cfgValue.getUint8(0);
         const brightness = cfgValue.getUint8(1);
         const sensitivity = cfgValue.getUint8(2);
+        let gyroSens = 50;
+        if (cfgValue.byteLength >= 4) {
+            gyroSens = cfgValue.getUint8(3);
+        }
 
         timeoutInput.value = timeout;
         timeoutVal.textContent = timeout;
@@ -60,6 +74,20 @@ connectBtn.addEventListener('click', async () => {
         brightnessVal.textContent = brightness;
         sensitivityInput.value = sensitivity;
         sensitivityVal.textContent = sensitivity;
+        gyroSensInput.value = gyroSens;
+        gyroSensVal.textContent = gyroSens;
+
+        // Read initial mode and color
+        const modeValue = await modeCharacteristic.readValue();
+        modeSelect.value = modeValue.getUint8(0);
+
+        const colorValue = await colorCharacteristic.readValue();
+        const r = colorValue.getUint8(0);
+        const g = colorValue.getUint8(1);
+        const b = colorValue.getUint8(2);
+        // Convert to hex for color picker
+        const hex = "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
+        colorPicker.value = hex;
 
         // Start IMU notifications
         await imuCharacteristic.startNotifications();
@@ -86,12 +114,14 @@ async function updateConfig() {
     const timeout = parseInt(timeoutInput.value);
     const brightness = parseInt(brightnessInput.value);
     const sensitivity = parseInt(sensitivityInput.value);
+    const gyroSens = parseInt(gyroSensInput.value);
     
     timeoutVal.textContent = timeout;
     brightnessVal.textContent = brightness;
     sensitivityVal.textContent = sensitivity;
+    gyroSensVal.textContent = gyroSens;
     
-    const data = new Uint8Array([timeout, brightness, sensitivity]);
+    const data = new Uint8Array([timeout, brightness, sensitivity, gyroSens]);
     try {
         await cfgCharacteristic.writeValue(data);
     } catch (e) {
@@ -99,8 +129,37 @@ async function updateConfig() {
     }
 }
 
+modeSelect.addEventListener('change', async () => {
+    if (!modeCharacteristic) return;
+    const mode = parseInt(modeSelect.value);
+    try {
+        await modeCharacteristic.writeValue(new Uint8Array([mode]));
+    } catch (e) {
+        console.error("Failed to write mode", e);
+    }
+});
+
+colorPicker.addEventListener('change', async (e) => {
+    if (!colorCharacteristic) return;
+    const hex = e.target.value;
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    try {
+        await colorCharacteristic.writeValue(new Uint8Array([r, g, b]));
+        // Auto-switch to solid color mode when color is picked
+        if (modeSelect.value != "1") {
+            modeSelect.value = "1";
+            modeSelect.dispatchEvent(new Event('change'));
+        }
+    } catch (err) {
+        console.error("Failed to write color", err);
+    }
+});
+
 brightnessInput.addEventListener('change', updateConfig);
 sensitivityInput.addEventListener('change', updateConfig);
+gyroSensInput.addEventListener('change', updateConfig);
 timeoutInput.addEventListener('change', updateConfig);
 
 // Command Buttons
