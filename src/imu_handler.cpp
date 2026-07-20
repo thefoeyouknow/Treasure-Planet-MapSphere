@@ -111,7 +111,12 @@ void processIMUPhysicalInputs() {
     float z = accel.acceleration.z / 9.80665;
 
     float gyroMag = sqrt((gyro.gyro.x * gyro.gyro.x) + (gyro.gyro.y * gyro.gyro.y) + (gyro.gyro.z * gyro.gyro.z));
-    applyGyroHueShift(gyroMag);
+    
+    // Deadzone: Ignore tiny sensor noise when perfectly still (0.15 rad/s ~ 8.5 dps)
+    if (gyroMag > 0.15f) {
+        // Subtract the deadzone so it doesn't instantly snap when crossing the threshold
+        applyGyroHueShift(gyroMag - 0.15f);
+    }
 
     currentG_X = x;
     currentG_Y = y;
